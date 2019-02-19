@@ -1,6 +1,11 @@
 #ifndef M3_TYPES_H__
 #define M3_TYPES_H__
 
+#include <Arduino.h>
+
+namespace m3
+{
+
 typedef uint8_t byte;
 typedef uint16_t NodeId;
 typedef uint16_t PackageSize;
@@ -15,5 +20,7 @@ enum NodeType : byte
     Actor = 2,
     Controller = 3
 };
+
+} // namespace m3
 
 #endif

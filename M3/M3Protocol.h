@@ -3,6 +3,9 @@
 
 #include "M3Types.h"
 
+namespace m3
+{
+
 #pragma pack(1)
 
 enum PackageType : char
@@ -36,10 +39,10 @@ struct IdentifyPackage
     {
         memcpy(start, M3_PACKAGE_START, M3_PACKAGE_START_NUM_BYTES);
         memcpy(end, M3_PACKAGE_END, M3_PACKAGE_END_NUM_BYTES);
+        memcpy(&(this->key[0]), key, K);
 
         this->id = id;
         this->nodeType = type;
-        memcpy(&(this->key[0]), key, K);
     }
 };
 
@@ -59,11 +62,14 @@ struct DataPackage
     {
         memcpy(start, M3_PACKAGE_START, M3_PACKAGE_START_NUM_BYTES);
         memcpy(end, M3_PACKAGE_END, M3_PACKAGE_END_NUM_BYTES);
+
         this->id = id;
         this->pkgId = pkgId;
     }
 };
 
 #pragma pack(0)
+
+} // namespace m3
 
 #endif
