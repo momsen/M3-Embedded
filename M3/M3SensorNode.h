@@ -89,6 +89,14 @@ public:
     dataPackage.initialize(id, 0);
   }
 
+  void setBattery(short voltage, byte level)
+  {
+    identifyPackage.batteryVoltage = voltage;
+    identifyPackage.batteryLevel = level;
+    dataPackage.batteryVoltage = voltage;
+    dataPackage.batteryLevel = level;
+  }
+
 private:
   SHA256 hmac;
   IdentifyPackage<S, K, H> identifyPackage;

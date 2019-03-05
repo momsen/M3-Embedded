@@ -7,8 +7,6 @@
 #include <LowPower.h>
 #include <RH_ASK.h>
 
-// TODO: rtc Konfiguration und an SENSOR_INT_PIN hängen
-
 // Speicherbereich
 #define EEPROM_ADDRESS_HWINF 0
 #define EEPROM_ADDRESS_M3 HWINFO_EEPROM_DATA_NUM_BYTES
@@ -43,6 +41,7 @@
 #define KEY_SIZE 32
 #define HMAC_SIZE 32
 #define UNDEF_STATE 0xee
+#define NUM_8S_SLEEPS 75 // 10 Minuten (10 * 60 / 8)
 
 Battery battery(950, 1500, A1);
 m3::M3SensorNode<3, KEY_SIZE, HMAC_SIZE> m3Node(EEPROM_ADDRESS_M3);
@@ -50,6 +49,7 @@ utils::ArrayQueue<STATE_QUEUE_SIZE, byte, UNDEF_STATE> sensor1StateQueue;
 utils::ArrayQueue<STATE_QUEUE_SIZE, byte, UNDEF_STATE> sensor2StateQueue;
 RH_ASK transmitter(TX_FQ, RX_PIN, TX_PIN);
 volatile bool setupModeRequested = false;
+volatile bool sensorIsr = false;
 
 inline void enqueueSensorStates()
 {
@@ -74,6 +74,7 @@ inline void enqueueSensorStates()
 void isrEnqueueSensorStates()
 {
     enqueueSensorStates();
+    sensorIsr = true;
 }
 
 inline void blockingSendData(uint8_t *data, uint8_t len)
@@ -88,6 +89,7 @@ inline void blockingSendData(uint8_t *data, uint8_t len)
 
 inline void sendState()
 {
+    m3Node.setBattery(battery.voltage(), battery.level());
     m3Node.buildDataPackage();
     blockingSendData((uint8_t *)m3Node.getDataPackage(), m3Node.getDataPackageSize());
     m3Node.persistStateSend();
@@ -95,8 +97,9 @@ inline void sendState()
 
 inline void sendIdentity()
 {
-    for (int i = 0; i < 5; i++)
+    for (int i = 0; i < 10; i++)
     {
+        m3Node.setBattery(battery.voltage(), battery.level());
         blockingSendData((uint8_t *)m3Node.getIdentifyPackage(), m3Node.getIdentifyPackageSize());
         delay(500);
     }
@@ -219,5 +222,19 @@ void loop()
         sendState();
     }
 
-    LowPower.powerDown(SLEEP_FOREVER, ADC_OFF, BOD_OFF);
+    sensorIsr = false;
+    int numSleeps = NUM_8S_SLEEPS;
+    while (numSleeps-- > 0)
+    {
+        LowPower.powerDown(SLEEP_8S, ADC_OFF, BOD_OFF);
+        if (sensorIsr || setupModeRequested)
+        {
+            break;
+        }
+    }
+
+    if (numSleeps <= 0)
+    {
+        enqueueSensorStates();
+    }
 }

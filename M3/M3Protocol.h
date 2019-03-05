@@ -32,6 +32,8 @@ struct IdentifyPackage
     KeySize keySize = K;
     HmacSize hmacSize = H;
     StateSize stateSize = S;
+    short batteryVoltage;
+    byte batteryLevel;
     byte key[K];
     byte end[M3_PACKAGE_END_NUM_BYTES];
 
@@ -54,6 +56,8 @@ struct DataPackage
     PackageSize size = sizeof(DataPackage);
     NodeId id;
     PackageNumber pkgId;
+    short batteryVoltage;
+    byte batteryLevel;
     byte state[S];
     byte hmac[H];
     byte end[M3_PACKAGE_END_NUM_BYTES];
