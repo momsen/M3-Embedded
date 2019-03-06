@@ -53,8 +53,6 @@ volatile bool sensorIsr = false;
 
 inline void enqueueSensorStates()
 {
-    noInterrupts();
-
     byte state1 = utils::blockingReadDebouncedValueLoop(SENSOR1_PIN, DEBOUNCE_LOOP_COUNT, DEBOUNCE_NOPS_COUNT);
     byte state2 = utils::blockingReadDebouncedValueLoop(SENSOR2_PIN, DEBOUNCE_LOOP_COUNT, DEBOUNCE_NOPS_COUNT);
 
@@ -67,8 +65,6 @@ inline void enqueueSensorStates()
     {
         sensor2StateQueue.enqueue(state2);
     }
-
-    interrupts();
 }
 
 void isrEnqueueSensorStates()
@@ -126,7 +122,9 @@ inline void executeSetupRequest()
         sendIdentity();
     }
 
+    noInterrupts();
     enqueueSensorStates();
+    interrupts();
 
     digitalWrite(SETUP_LED_PIN, LOW);
     setupModeRequested = false;
