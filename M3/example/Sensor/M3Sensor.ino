@@ -77,8 +77,14 @@ inline void blockingSendData(uint8_t *data, uint8_t len)
 {
     digitalWrite(SEND_LED_PIN, HIGH);
 
-    transmitter.send(data, len);
-    transmitter.waitPacketSent();
+    uint8_t bytesSent = 0;
+    while (bytesSent < len)
+    {
+        uint8_t bytesInThisPackages = min(len - bytesSent, RH_ASK_MAX_MESSAGE_LEN);
+        transmitter.send(data + bytesSent, bytesInThisPackages);
+        transmitter.waitPacketSent();
+        bytesSent += bytesInThisPackage;
+    }
 
     digitalWrite(SEND_LED_PIN, LOW);
 }
