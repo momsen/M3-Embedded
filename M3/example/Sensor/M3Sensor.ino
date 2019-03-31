@@ -5,6 +5,7 @@
 #include <Battery.h>
 #include <M3SensorNode.h>
 #include <LowPower.h>
+#include <PinChangeInterrupt.h>
 #include <RH_ASK.h>
 
 // Speicherbereich
@@ -12,11 +13,10 @@
 #define EEPROM_ADDRESS_M3 HWINFO_EEPROM_DATA_NUM_BYTES
 
 // PINS
-#define SENSOR_INT_PIN 2 // Bei Änderungen dieses Pins wird der Status der Sensoren ausgelesen und versendet
-#define SETUP_INT_PIN 3
+#define SETUP_INT_PIN 2
 
-#define SENSOR1_PIN 7 // Tatsächliche Sensordaten
-#define SENSOR2_PIN 8 // Tatsächliche Sensordaten
+#define SENSOR1_PIN 7
+#define SENSOR2_PIN 8
 
 #define SETUP_LED_PIN 5
 #define SEND_LED_PIN 6
@@ -31,13 +31,11 @@
 #define TX_FQ 2000
 
 // Optimierung der Eingabe
-#define DEBOUNCE_LOOP_COUNT 50
-#define DEBOUNCE_NOPS_COUNT 10
 #define SETUP_MODE_PRESS_TIME 10000
 #define SEND_IDENT_MODE_PRESS_TIME 1000
 
 // Node-Konfiguration
-#define STATE_QUEUE_SIZE 10
+#define STATE_QUEUE_SIZE 20
 #define KEY_SIZE 32
 #define HMAC_SIZE 32
 #define UNDEF_STATE 0xee
@@ -53,14 +51,13 @@ volatile bool sensorIsr = false;
 
 inline void enqueueSensorStates()
 {
-    byte state1 = utils::blockingReadDebouncedValueLoop(SENSOR1_PIN, DEBOUNCE_LOOP_COUNT, DEBOUNCE_NOPS_COUNT);
-    byte state2 = utils::blockingReadDebouncedValueLoop(SENSOR2_PIN, DEBOUNCE_LOOP_COUNT, DEBOUNCE_NOPS_COUNT);
-
+    byte state1 = digitalRead(SENSOR1_PIN);
     if (sensor1StateQueue.isEmpty() || sensor1StateQueue.get() != state1)
     {
         sensor1StateQueue.enqueue(state1);
     }
 
+    byte state2 = digitalRead(SENSOR2_PIN);
     if (sensor2StateQueue.isEmpty() || sensor2StateQueue.get() != state2)
     {
         sensor2StateQueue.enqueue(state2);
@@ -80,8 +77,8 @@ inline void blockingSendData(uint8_t *data, uint8_t len)
     uint8_t bytesSent = 0;
     while (bytesSent < len)
     {
-        uint8_t bytesInThisPackages = min(len - bytesSent, RH_ASK_MAX_MESSAGE_LEN);
-        transmitter.send(data + bytesSent, bytesInThisPackages);
+        uint8_t bytesInThisPackage = min(len - bytesSent, RH_ASK_MAX_MESSAGE_LEN);
+        transmitter.send(data + bytesSent, bytesInThisPackage);
         transmitter.waitPacketSent();
         bytesSent += bytesInThisPackage;
     }
@@ -138,14 +135,17 @@ inline void executeSetupRequest()
 
 void errorMode(byte errorCode)
 {
-    digitalWrite(SETUP_LED_PIN, errorCode & 1);
+    digitalWrite(SETUP_LED_PIN, HIGH);
 
     while (true)
     {
-        digitalWrite(SEND_LED_PIN, HIGH);
-        delay(250);
-        digitalWrite(SEND_LED_PIN, LOW);
-        delay(250);
+        for (int i = 0; i < errorCode; i++)
+        {
+            digitalWrite(SEND_LED_PIN, HIGH);
+            delay(250);
+            digitalWrite(SEND_LED_PIN, LOW);
+            delay(250);
+        }
     }
 }
 
@@ -153,7 +153,6 @@ void setup()
 {
     randomSeed(analogRead(RANDOM_SEED_PIN));
 
-    pinMode(SENSOR_INT_PIN, INPUT);
     pinMode(SENSOR1_PIN, INPUT);
     pinMode(SENSOR2_PIN, INPUT);
     pinMode(SETUP_INT_PIN, INPUT);
@@ -180,7 +179,8 @@ void setup()
         battery.begin(5000, 1.0);
     }
 
-    attachInterrupt(digitalPinToInterrupt(SENSOR_INT_PIN), isrEnqueueSensorStates, CHANGE);
+    attachPCINT(digitalPinToPCINT(SENSOR1_PIN), isrEnqueueSensorStates, CHANGE);
+    attachPCINT(digitalPinToPCINT(SENSOR2_PIN), isrEnqueueSensorStates, CHANGE);
     attachInterrupt(digitalPinToInterrupt(SETUP_INT_PIN), isrRequestSetupMode, HIGH);
 }
 
