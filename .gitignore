@@ -14,3 +14,6 @@ DHT_sensor_library
 Adafruit*
 BMP280-Arduino-Library-master
 PinChangeInterrupt
+MQTT
+Secrets
+MFRC522
