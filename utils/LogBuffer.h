@@ -13,7 +13,7 @@ public:
   LogBuffer(const char* headline) {
     memset(content, 0, maxSize);
     headlineLength = strlen(headline);
-    strcpy(headline, content);
+    strcpy(content, headline);
     content[headlineLength++] = '\n';
     contentPtr = headlineLength;
   }
@@ -23,9 +23,8 @@ public:
   }
 
   void appendMessage(const char* string) {
-    char* input = string;
-    while(*input != '\0') {
-      appendChar(*input);
+    while(*string != '\0') {
+      appendChar(*string++);
     }
   }
 
@@ -62,9 +61,10 @@ private:
   }
 
   uint8_t headlineLength;
-  char content[charsPerRow * maxRows];
+  char content[maxSize];
   uint8_t x;
   uint8_t y;
+  uint32_t contentPtr;
 };
 
 } // namespace utils
