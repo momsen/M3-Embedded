@@ -11,11 +11,13 @@ class LogBuffer
 {
 public:
   LogBuffer(const char* headline) {
-    memset(content, 0, maxSize);
-    headlineLength = strlen(headline);
-    strcpy(content, headline);
-    content[headlineLength++] = '\n';
-    contentPtr = headlineLength;
+    memset(data, 0, maxSize+1);
+    uint32_t headlineLength = strlen(headline);
+    strcpy(data, headline);
+    data[headlineLength++] = '\n';
+    content = &(data[headlineLength]);
+    contentPtr = 0;
+    contentSize = maxSize - headlineLength;
   }
 
   void appendMessage(String message) {
@@ -29,7 +31,7 @@ public:
   }
 
   void appendChar(const char c) {
-    if(contentPtr >= maxSize) {
+    if(contentPtr >= contentSize) {
       wrap();
     }
 
@@ -40,31 +42,29 @@ public:
     appendChar('\n');
   }
 
-  String getContent() {
-      return content;
+  String getData() {
+      return data;
   }
 
 private:
   void wrap() {
-    uint32_t firstNewLine = headlineLength;
-    while(content[firstNewLine++] != '\n' && firstNewLine < maxSize) {
+    uint32_t firstNewLine = strcspn(content, "\n");
+    if(firstNewLine == contentSize) {
+      // no new line found: override last char
+      contentPtr--;
+      return;
     }
-
-    if(firstNewLine >= maxSize) {
-      // no \n found, using removing first 100 bytes
-      firstNewLine = headlineLength + 100;
-    }
-
-    memcpy(content + headlineLength, content + firstNewLine, firstNewLine * sizeof(char));
-    memset(content + maxSize - firstNewLine, 0, firstNewLine * sizeof(char));
-    contentPtr -= firstNewLine;
+    
+    firstNewLine++;
+    contentPtr = contentSize - firstNewLine;
+    memcpy(content, content + firstNewLine, contentPtr);
+    memset(content + contentPtr, 0, contentSize - contentPtr);
   }
 
-  uint8_t headlineLength;
-  char content[maxSize];
-  uint8_t x;
-  uint8_t y;
+  char data[maxSize+1];
+  char* content;
   uint32_t contentPtr;
+  uint32_t contentSize;
 };
 
 } // namespace utils
